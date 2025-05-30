@@ -4,8 +4,67 @@ openai.api_key = st.secrets["OPENAI_API_KEY"]
 
 st.title("Klinik Selnau – AI Report MVP")
 
-fin_file   = st.file_uploader("Upload FINANCIALS.xlsx", type="xlsx")
-cal_file   = st.file_uploader("Upload CALENDAR.xlsx",  type="xlsx")
+fin_file = st.file_uploader("Upload FINANCIALS.xlsx", type="xlsx")
+if fin_file:
+    # 1) Read raw
+    fin = pd.read_excel(fin_file)
+    # 2) Normalize headers...
+    fin.columns = (
+        fin.columns
+           .str.strip()
+           .str.lower()
+           .str.replace(r"\s+", "_", regex=True)
+    )
+    # 3) Rename German → expected names
+    fin = fin.rename(columns={
+        "rechdatum":     "date",
+        "transbetrag":   "gross_revenue",
+    })
+    # 4) Parse dates
+    fin["date"] = pd.to_datetime(fin["date"], dayfirst=True)
+    # 5) Compute net_revenue
+    fin["net_revenue"] = fin["gross_revenue"]
+
+cal_file = st.file_uploader("Upload CALENDAR.xlsx", type="xlsx")
+if cal_file:
+    cal = pd.read_excel(cal_file)
+
+    # 1) Normalize headers
+    cal.columns = (
+        cal.columns
+           .str.strip()
+           .str.lower()
+           .str.replace(r"\s+", "_", regex=True)
+    )
+    # Now: ["datum", "ende", "dauer", "kalender", "termin",
+    #       "kommentar", "erschienen", "deleted"]
+
+    # 2) Rename to our expected names
+    cal = cal.rename(columns={
+        "datum":     "scheduled_start",
+        "ende":      "scheduled_end",
+        "dauer":     "duration_min",      # assuming 'dauer' is in minutes
+        "kalender":  "provider_id",
+        "termin":    "appointment_type",
+        "erschienen":"appeared",          # boolean: True if patient showed
+        "deleted":   "cancelled"          # boolean: True if cancelled
+    })
+
+    # 3) Parse datetimes
+    cal["scheduled_start"] = pd.to_datetime(cal["scheduled_start"], dayfirst=True)
+    cal["scheduled_end"]   = pd.to_datetime(cal["scheduled_end"],   dayfirst=True)
+
+    # 4) Derive status & utilisation flag
+    def map_status(row):
+        if row["cancelled"]:
+            return "cancelled"
+        if row["appeared"]:
+            return "completed"
+        return "no_show"
+    cal["status"] = cal.apply(map_status, axis=1)
+    cal["utilised_slot"] = cal["status"].isin(["completed", "confirmed", "appeared"]).astype(int)
+
+    # … now you can compute utilisation % as before …
 
 if fin_file and cal_file:
     fin = pd.read_excel(fin_file).rename(str.lower, axis=1)
