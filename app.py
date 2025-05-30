@@ -15,16 +15,24 @@ if fin_file and cal_file:
 
     # —————— Financials prep ——————
     fin = pd.read_excel(fin_file)
-    fin.columns = (
-        fin.columns
-           .str.strip()
-           .str.lower()
-           .str.replace(r"\s+", "_", regex=True)
-    )
-    fin = fin.rename(columns={
-        "rechdatum":   "date",            # invoice date
-        "transbetrag": "gross_revenue"    # transaction amount → gross_revenue
-    })
+
+# normalize to snake case
+fin.columns = (
+    fin.columns
+       .str.strip()
+       .str.lower()
+       .str.replace(r"\s+", "_", regex=True)
+)
+
+# **DEBUG**: show me what they really are
+st.write("📋 FIN columns:", fin.columns.tolist())
+
+# then your rename(...)
+fin = fin.rename(columns={ 
+    "rechdatum": "date",
+    "transbetrag": "gross_revenue",
+})
+
     fin["date"]        = pd.to_datetime(fin["date"],        dayfirst=True)
     fin["net_revenue"] = fin["gross_revenue"]                # no discounts/refunds
 
