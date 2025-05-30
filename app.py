@@ -52,6 +52,7 @@ if fin_file and cal_file:
     )
 
     # —————— KPIs & charts ——————
+        # —————— KPIs & charts ——————
     util_pct = 100 * cal[cal.status=="completed"].shape[0] / cal.shape[0]
     st.metric("Utilisation %", f"{util_pct:,.1f}")
     rev_trend = fin.groupby(fin["date"].dt.to_period("M"))["net_revenue"].sum()
