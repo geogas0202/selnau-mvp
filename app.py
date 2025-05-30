@@ -53,4 +53,22 @@ if fin_file and cal_file:
 
     # —————— KPIs & charts ——————
     util_pct = 100 * cal[cal.status=="completed"].shape[0] / cal.shape[0]
-    st.metric("Utilis
+    st.metric("Utilisation %", f"{util_pct:,.1f}")
+    rev_trend = fin.groupby(fin["date"].dt.to_period("M"))["net_revenue"].sum()
+    st.bar_chart(rev_trend)
+
+    # —————— Chat & AI Q&A ——————
+    st.write("---")
+    prompt_q = st.chat_input("Ask me about revenue, utilisation, no-shows…")
+    if prompt_q:
+        sample_md = fin.head(50).to_markdown(index=False)
+        full_prompt = (
+            f"Data sample:\n{sample_md}\n\n"
+            f"Question: {prompt_q}\nAnswer in one paragraph."
+        )
+        resp = openai.ChatCompletion.create(
+            model="gpt-4o-mini",
+            messages=[{"role":"user","content":full_prompt}],
+            temperature=0
+        )
+        st.chat_message("assistant").write(resp.choices[0].message.content.strip())
